@@ -30,8 +30,6 @@ func NewOrder(price float64, amount float64, side types.Side, orderType types.Or
 	}
 }
 
-// Order Checks
-
 func (o *Order) IsValid() bool {
 	if o.Price <= 0 || o.Amount <= 0 {
 		return false

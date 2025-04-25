@@ -99,8 +99,10 @@ func (ob *OrderBook) removeFromHeap(h *OrderHeap, id string) bool {
 			}
 			h.orders = h.orders[:lastIndex]
 
-			h.heapifyUp(i)
-			h.heapifyDown(i)
+			if i < len(h.orders) {
+				h.heapifyDown(i)
+				h.heapifyUp(i)
+			}
 
 			return true
 		}

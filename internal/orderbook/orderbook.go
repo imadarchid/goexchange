@@ -36,9 +36,17 @@ func (ob *OrderBook) Submit(o *order.Order) {
 
 func (ob *OrderBook) Withdraw(o *order.Order) bool {
 	if o.Side == types.Buy {
-		return ob.removeFromHeap(ob.Bids, o.ID)
+		if ob.Bids.Len() > 0 {
+			return ob.removeFromHeap(ob.Bids, o.ID)
+		} else {
+			return false
+		}
 	} else if o.Side == types.Sell {
-		return ob.removeFromHeap(ob.Asks, o.ID)
+		if ob.Asks.Len() > 0 {
+			return ob.removeFromHeap(ob.Asks, o.ID)
+		} else {
+			return false
+		}
 	}
 	return false
 }

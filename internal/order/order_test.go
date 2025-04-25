@@ -25,3 +25,10 @@ func TestOrderNoSides(t *testing.T) {
 		t.Errorf("Order has illegal parameters.")
 	}
 }
+
+func TestValidOrder(t *testing.T) {
+	order := NewOrder(10, 100, types.Buy, types.Limit)
+	if order.IsValid() != true {
+		t.Errorf("Expected valid order.")
+	}
+}
