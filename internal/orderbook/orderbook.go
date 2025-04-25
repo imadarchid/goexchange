@@ -58,11 +58,16 @@ func (ob *OrderBook) MatchOrders() {
 			bid.Amount -= tradeAmount
 			ask.Amount -= tradeAmount
 
+			bid.Status = types.PartiallyFilled
+			ask.Status = types.PartiallyFilled
+
 			if bid.Amount == 0 {
 				ob.Bids.Delete()
+				bid.Status = types.Filled
 			}
 			if ask.Amount == 0 {
 				ob.Asks.Delete()
+				ask.Status = types.Filled
 			}
 		} else {
 			break
