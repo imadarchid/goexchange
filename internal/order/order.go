@@ -18,7 +18,7 @@ type Order struct {
 	Ticker string
 }
 
-func NewOrder(price float64, amount float64, side types.Side, orderType types.OrderType, asset string) *Order {
+func NewOrder(price float64, amount float64, side types.Side, orderType types.OrderType, ticker string) *Order {
 	return &Order{
 		ID:     uuid.New().String(),
 		Price:  price,
@@ -27,7 +27,7 @@ func NewOrder(price float64, amount float64, side types.Side, orderType types.Or
 		Time:   time.Now().UTC(),
 		Type:   orderType,
 		Status: types.Pending,
-		Ticker: asset,
+		Ticker: ticker,
 	}
 }
 
