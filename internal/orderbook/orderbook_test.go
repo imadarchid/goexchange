@@ -27,7 +27,7 @@ func TestNewOrderBook(t *testing.T) {
 func TestSubmitWrongOrder(t *testing.T) {
 	ob := NewOrderBook()
 
-	new_bad_order := order.NewOrder(-10, 100, types.Sell, types.Market)
+	new_bad_order := order.NewOrder(-10, 100, types.Sell, types.Limit)
 	ob.Submit(new_bad_order)
 
 	if ob.Asks.Len() > 0 {
@@ -35,9 +35,9 @@ func TestSubmitWrongOrder(t *testing.T) {
 	}
 }
 
-func TestSubmitSellOrder(t *testing.T) {
+func TestSubmitLimitSellOrder(t *testing.T) {
 	ob := NewOrderBook()
-	test_order := order.NewOrder(10, 100, types.Sell, types.Market)
+	test_order := order.NewOrder(10, 100, types.Sell, types.Limit)
 
 	ob.Submit(test_order)
 	if ob.Bids.Len() > 0 {
@@ -49,12 +49,48 @@ func TestSubmitSellOrder(t *testing.T) {
 	}
 }
 
-func TestSubmitBuyOrder(t *testing.T) {
+func TestSubmitLimitBuyOrder(t *testing.T) {
 	ob := NewOrderBook()
-	test_order := order.NewOrder(10, 100, types.Buy, types.Market)
+	test_order := order.NewOrder(10, 100, types.Buy, types.Limit)
 
 	ob.Submit(test_order)
 	if ob.Asks.Len() > 0 {
+		t.Error("BUY order was transmitted as a SELL order.")
+	}
+
+	if ob.Bids.orders == nil {
+		t.Error("BUY order was not transmitted to the orderbook.")
+	}
+}
+
+func TestSubmitMarketBuyOrder(t *testing.T) {
+	ob := NewOrderBook()
+	test_order := order.NewOrder(10, 100, types.Buy, types.Limit)
+	test_order_sell := order.NewOrder(10, 100, types.Sell, types.Market)
+
+	ob.Submit(test_order)
+	ob.Submit(test_order_sell)
+
+	if ob.Asks.Len() > 0 {
+		t.Error("BUY order was transmitted as a SELL order.")
+	}
+
+	if ob.Bids.orders == nil {
+		t.Error("BUY order was not transmitted to the orderbook.")
+	}
+
+	if ob.Asks.Len()-ob.Bids.Len() != 0 {
+		t.Errorf("Expected an empty order book.")
+	}
+}
+
+func TestSubmitMarketSellOrder(t *testing.T) {
+	ob := NewOrderBook()
+	test_order_sell := order.NewOrder(10, 100, types.Sell, types.Limit)
+
+	ob.Submit(test_order_sell)
+
+	if ob.Bids.Len() > 0 {
 		t.Error("BUY order was transmitted as a SELL order.")
 	}
 
@@ -63,11 +99,21 @@ func TestSubmitBuyOrder(t *testing.T) {
 	}
 }
 
+func TestMarketOrderNoLiquidity(t *testing.T) {
+	ob := NewOrderBook()
+	test_order := order.NewOrder(10, 100, types.Buy, types.Market)
+
+	result := ob.Submit(test_order)
+	if result == true {
+		t.Error("Market order was processed despite insufficient liquidity.")
+	}
+}
+
 func TestWithdrawOrder(t *testing.T) {
 	ob := NewOrderBook()
-	test_order := order.NewOrder(12, 100, types.Buy, types.Market)
-	buy_order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Market)
-	sell_order_to_withdraw := order.NewOrder(120, 100, types.Sell, types.Market)
+	test_order := order.NewOrder(12, 100, types.Buy, types.Limit)
+	buy_order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Limit)
+	sell_order_to_withdraw := order.NewOrder(120, 100, types.Sell, types.Limit)
 
 	ob.Submit(test_order)
 	ob.Submit(buy_order_to_withdraw)
@@ -91,7 +137,7 @@ func TestWithdrawOrder(t *testing.T) {
 
 func TestWithdrawEmptyOrderBook(t *testing.T) {
 	ob := NewOrderBook()
-	order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Market)
+	order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Limit)
 
 	result := ob.Withdraw(order_to_withdraw)
 
@@ -103,7 +149,7 @@ func TestWithdrawEmptyOrderBook(t *testing.T) {
 
 func TestWithdrawBadOrder(t *testing.T) {
 	ob := NewOrderBook()
-	order_to_withdraw := order.NewOrder(60, 100, "SIDEWAYS", types.Market)
+	order_to_withdraw := order.NewOrder(60, 100, "SIDEWAYS", types.Limit)
 
 	result := ob.Withdraw(order_to_withdraw)
 
@@ -117,8 +163,8 @@ func TestOrdersMatched(t *testing.T) {
 	ob := NewOrderBook()
 
 	// Case 1: similar orders
-	order_1 := order.NewOrder(60, 100, types.Buy, types.Market)
-	order_2 := order.NewOrder(60, 100, types.Sell, types.Market)
+	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit)
+	order_2 := order.NewOrder(60, 100, types.Sell, types.Limit)
 
 	ob.Submit(order_1)
 	ob.Submit(order_2)
@@ -132,25 +178,44 @@ func TestOrdersMatched(t *testing.T) {
 func TestOrdersPartiallyMatched(t *testing.T) {
 	ob := NewOrderBook()
 
-	order_1 := order.NewOrder(60, 100, types.Buy, types.Market)
-	order_2 := order.NewOrder(60, 50, types.Sell, types.Market)
+	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit)
+	order_2 := order.NewOrder(60, 50, types.Sell, types.Limit)
+	order_3 := order.NewOrder(60, 165, types.Sell, types.Market)
+	order_4 := order.NewOrder(62, 150, types.Buy, types.Limit)
 
 	ob.Submit(order_1)
 	ob.Submit(order_2)
+
+	if order_1.Status != types.PartiallyFilled {
+		t.Errorf("Expected status to be partially filled.")
+	}
+
+	ob.Submit(order_3)
+
+	if order_3.Status != types.PartiallyFilled {
+		t.Errorf("Expected status to be partially filled.")
+	}
+
+	ob.Submit(order_4)
+
+	if order_3.Status != types.Filled {
+		t.Errorf("Expected status to be fully filled.")
+	}
 
 	topBid := ob.Bids.Peek()
 	topAsk := ob.Asks.Peek()
 
 	if topBid == nil {
 		t.Errorf("Expected remaining bid orders left.")
+		return
 	}
 
 	if topAsk != nil {
 		t.Errorf("Expected no remaining ask orders left.")
 	}
 
-	// if topBid.Status != types.PartiallyFilled {
-	// 	t.Errorf("Expected status to be partially filled.")
-	// }
+	if order_4.Status != types.PartiallyFilled {
+		t.Errorf("Expected status to be partially filled.")
+	}
 
 }

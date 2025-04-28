@@ -18,20 +18,23 @@ func NewOrderBook() *OrderBook {
 	}
 }
 
-func (ob *OrderBook) Submit(o *order.Order) {
+func (ob *OrderBook) Submit(o *order.Order) bool {
 	if !o.IsValid() {
-		return
-	}
-	if o.Side == types.Buy {
-		ob.Bids.Insert(o)
-	} else if o.Side == types.Sell {
-		ob.Asks.Insert(o)
+		return false
 	}
 
-	fmt.Printf("%s Order submitted %.2f @ %.2f ID: %s\n",
-		o.Side, o.Amount, o.Price, o.ID)
+	if !handleOrderType(o, ob) {
+		fmt.Printf("%s Order was NOT filled %.2f @ %.2f ID: %s\n",
+			o.Side, o.Amount, o.Price, o.ID)
+		o.Status = types.Cancelled
+		return false
+	}
+
+	fmt.Printf("%s %s Order submitted %.2f @ %.2f ID: %s\n",
+		o.Side, o.Type, o.Amount, o.Price, o.ID)
 
 	ob.MatchOrders()
+	return true
 }
 
 func (ob *OrderBook) Withdraw(o *order.Order) bool {
@@ -55,6 +58,12 @@ func (ob *OrderBook) MatchOrders() {
 	for ob.Bids.Len() > 0 && ob.Asks.Len() > 0 {
 		bid := ob.Bids.Peek()
 		ask := ob.Asks.Peek()
+
+		if bid.Type == types.Market {
+			bid.Price = ask.Price
+		} else if ask.Type == types.Market {
+			ask.Price = bid.Price
+		}
 
 		if bid.Price >= ask.Price {
 			tradeAmount := min(bid.Amount, ask.Amount)
@@ -88,4 +97,41 @@ func min(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+
+func handleOrderType(o *order.Order, ob *OrderBook) bool {
+	switch o.Side {
+	case types.Buy:
+		switch o.Type {
+		case types.Market:
+			if ob.Asks.Len() > 0 {
+				o.Price = ob.Asks.Peek().Price
+				ob.Bids.Insert(o)
+				return true
+			}
+			return false
+		case types.Limit:
+			ob.Bids.Insert(o)
+			return true
+		default:
+			return false
+		}
+	case types.Sell:
+		switch o.Type {
+		case types.Market:
+			if ob.Bids.Len() > 0 {
+				o.Price = ob.Bids.Peek().Price
+				ob.Asks.Insert(o)
+				return true
+			}
+			return false
+		case types.Limit:
+			ob.Asks.Insert(o)
+			return true
+		default:
+			return false
+		}
+	default:
+		return false
+	}
 }
