@@ -1,24 +1,29 @@
 package main
 
 import (
-	"exchange/internal/order"
-	"exchange/internal/orderbook"
-	"exchange/internal/types"
+	"database/sql"
+	"log"
+	"net/http"
+
+	_ "github.com/lib/pq"
+
+	"exchange/internal/api/handler"
+	"exchange/internal/api/router"
+	"exchange/internal/db"
 )
 
 func main() {
-	testOrderbook := orderbook.NewOrderBook("LINK")
 
-	new_order := order.NewOrder(12, 100, types.Buy, types.Market, "LINK")
-	testOrderbook.Submit(new_order)
-	testOrderbook.Submit(new_order)
+	connStr := "postgresql://postgres:postgres@localhost:5432/testdb?sslmode=disable"
 
-	new_order = order.NewOrder(13, 100, types.Sell, types.Market, "LINK")
-	testOrderbook.Submit(new_order)
+	database, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatalf("could not connect to db: %v", err)
+	}
+	queries := db.New(database)
 
-	new_order = order.NewOrder(14, 100, types.Buy, types.Market, "LINK")
-	testOrderbook.Submit(new_order)
+	h := &handler.Handler{Queries: queries}
+	r := router.NewRouter(h)
 
-	new_order = order.NewOrder(12, 50, types.Sell, types.Market, "LINK")
-	testOrderbook.Submit(new_order)
+	http.ListenAndServe(":3000", r)
 }
