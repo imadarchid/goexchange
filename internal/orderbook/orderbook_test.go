@@ -219,3 +219,14 @@ func TestOrdersPartiallyMatched(t *testing.T) {
 	}
 
 }
+
+func TestWrongOrderBook(t *testing.T) {
+	ob := NewOrderBook("XRP")
+	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit, "LINK")
+
+	result := ob.Submit(order_1)
+	if result {
+		t.Errorf("Order was submitted to the wrong orderbook.")
+	}
+
+}

@@ -22,6 +22,12 @@ func NewOrderBook(ticker string) *OrderBook {
 
 func (ob *OrderBook) Submit(o *order.Order) bool {
 	if !o.IsValid() {
+		fmt.Println("Order not valid. WRONG_ORDER")
+		return false
+	}
+
+	if o.Ticker != ob.Ticker {
+		fmt.Println("Ticker does not match orderbook. WRONG_TICKER")
 		return false
 	}
 
