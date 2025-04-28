@@ -5,10 +5,11 @@
 package db
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type OrderSideType string
@@ -148,32 +149,33 @@ type Asset struct {
 }
 
 type Order struct {
-	ID          int32           `json:"id"`
+	ID          uuid.UUID       `json:"id"`
 	Price       float64         `json:"price"`
 	Amount      int32           `json:"amount"`
 	Side        OrderSideType   `json:"side"`
 	OrderType   OrderType       `json:"order_type"`
 	Asset       string          `json:"asset"`
 	CreatedAt   time.Time       `json:"created_at"`
-	CreatedBy   int32           `json:"created_by"`
+	CreatedBy   uuid.UUID       `json:"created_by"`
 	OrderStatus OrderStatusType `json:"order_status"`
 }
 
 type Transaction struct {
-	ID          int32     `json:"id"`
+	ID          uuid.UUID `json:"id"`
 	Price       float64   `json:"price"`
 	Amount      int32     `json:"amount"`
-	BuyerOrder  int32     `json:"buyer_order"`
-	SellerOrder int32     `json:"seller_order"`
+	BuyerOrder  uuid.UUID `json:"buyer_order"`
+	SellerOrder uuid.UUID `json:"seller_order"`
 	Asset       string    `json:"asset"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
 type User struct {
-	ID        int32          `json:"id"`
-	FirstName sql.NullString `json:"first_name"`
-	LastName  sql.NullString `json:"last_name"`
-	Dob       time.Time      `json:"dob"`
-	Balance   float64        `json:"balance"`
-	CreatedAt time.Time      `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Dob       time.Time `json:"dob"`
+	Balance   float64   `json:"balance"`
+	CreatedAt time.Time `json:"created_at"`
 }

@@ -7,31 +7,34 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const CreateUser = `-- name: CreateUser :one
-INSERT INTO users (first_name, last_name, dob, balance)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (first_name, last_name, dob, email, balance)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
 type CreateUserParams struct {
-	FirstName sql.NullString `json:"first_name"`
-	LastName  sql.NullString `json:"last_name"`
-	Dob       time.Time      `json:"dob"`
-	Balance   float64        `json:"balance"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Dob       time.Time `json:"dob"`
+	Email     string    `json:"email"`
+	Balance   float64   `json:"balance"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int32, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, CreateUser,
 		arg.FirstName,
 		arg.LastName,
 		arg.Dob,
+		arg.Email,
 		arg.Balance,
 	)
-	var id int32
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -42,14 +45,14 @@ WHERE id = $1
 RETURNING id
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id int32) (int32, error) {
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, DeleteUser, id)
 	err := row.Scan(&id)
 	return id, err
 }
 
 const GetAllUsers = `-- name: GetAllUsers :many
-SELECT id, first_name, last_name, dob, balance, created_at FROM users
+SELECT id, first_name, last_name, email, dob, balance, created_at FROM users
 ORDER BY created_at DESC
 `
 
@@ -66,6 +69,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.ID,
 			&i.FirstName,
 			&i.LastName,
+			&i.Email,
 			&i.Dob,
 			&i.Balance,
 			&i.CreatedAt,
@@ -91,14 +95,14 @@ RETURNING id
 `
 
 type UpdateUserParams struct {
-	FirstName sql.NullString `json:"first_name"`
-	LastName  sql.NullString `json:"last_name"`
-	Dob       time.Time      `json:"dob"`
-	Balance   float64        `json:"balance"`
-	ID        int32          `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Dob       time.Time `json:"dob"`
+	Balance   float64   `json:"balance"`
+	ID        uuid.UUID `json:"id"`
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int32, error) {
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, UpdateUser,
 		arg.FirstName,
 		arg.LastName,
@@ -106,7 +110,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (int32, 
 		arg.Balance,
 		arg.ID,
 	)
-	var id int32
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -119,13 +123,13 @@ RETURNING id
 `
 
 type UpdateUserBalanceParams struct {
-	Balance float64 `json:"balance"`
-	ID      int32   `json:"id"`
+	Balance float64   `json:"balance"`
+	ID      uuid.UUID `json:"id"`
 }
 
-func (q *Queries) UpdateUserBalance(ctx context.Context, arg UpdateUserBalanceParams) (int32, error) {
+func (q *Queries) UpdateUserBalance(ctx context.Context, arg UpdateUserBalanceParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, UpdateUserBalance, arg.Balance, arg.ID)
-	var id int32
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }

@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const CreateOrder = `-- name: CreateOrder :one
@@ -21,10 +23,10 @@ type CreateOrderParams struct {
 	Side      OrderSideType `json:"side"`
 	OrderType OrderType     `json:"order_type"`
 	Asset     string        `json:"asset"`
-	CreatedBy int32         `json:"created_by"`
+	CreatedBy uuid.UUID     `json:"created_by"`
 }
 
-func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (int32, error) {
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, CreateOrder,
 		arg.Price,
 		arg.Amount,
@@ -33,7 +35,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (int32
 		arg.Asset,
 		arg.CreatedBy,
 	)
-	var id int32
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -81,7 +83,7 @@ SELECT id, price, amount, side, order_type, asset, created_at, created_by, order
 WHERE id = $1
 `
 
-func (q *Queries) GetOrderById(ctx context.Context, id int32) (Order, error) {
+func (q *Queries) GetOrderById(ctx context.Context, id uuid.UUID) (Order, error) {
 	row := q.db.QueryRowContext(ctx, GetOrderById, id)
 	var i Order
 	err := row.Scan(
@@ -104,7 +106,7 @@ WHERE created_by = $1
 ORDER BY created_at DESC
 `
 
-func (q *Queries) GetOrdersByUser(ctx context.Context, createdBy int32) ([]Order, error) {
+func (q *Queries) GetOrdersByUser(ctx context.Context, createdBy uuid.UUID) ([]Order, error) {
 	rows, err := q.db.QueryContext(ctx, GetOrdersByUser, createdBy)
 	if err != nil {
 		return nil, err
@@ -146,12 +148,12 @@ RETURNING id
 
 type UpdateOrderStatusParams struct {
 	OrderStatus OrderStatusType `json:"order_status"`
-	ID          int32           `json:"id"`
+	ID          uuid.UUID       `json:"id"`
 }
 
-func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (int32, error) {
+func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, UpdateOrderStatus, arg.OrderStatus, arg.ID)
-	var id int32
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }

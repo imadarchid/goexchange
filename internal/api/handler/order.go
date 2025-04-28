@@ -1,17 +1,23 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"exchange/internal/db"
+	"exchange/internal/events"
 	"exchange/internal/order"
+	"exchange/internal/orderbook"
 	"exchange/internal/types"
+
+	"github.com/google/uuid"
 )
 
 type OrderRequest struct {
-	Amount    int             `json:"amount"`
+	Amount    int32           `json:"amount"`
 	Price     float64         `json:"price"`
 	Side      types.Side      `json:"side"`
 	OrderType types.OrderType `json:"order_type"`
@@ -19,12 +25,14 @@ type OrderRequest struct {
 }
 
 type ErrorResponse struct {
-	Error   string `json:"error"`
+	Code    string `json:"error"`
 	Message string `json:"message"`
 }
 
 type Handler struct {
-	Queries *db.Queries
+	Queries      *db.Queries
+	OrderBooks   map[string]*orderbook.OrderBook
+	ValidTickers map[string]struct{}
 }
 
 func (h *Handler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
@@ -34,21 +42,37 @@ func (h *Handler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorResponse{
-			Error:   "Invalid Request",
+			Code:    "INVALID_REQUEST_BODY",
 			Message: "Failed to decode request body",
 		})
 		return
 	}
 
-	order := order.NewOrder(req.Price, float64(req.Amount), req.Side, req.OrderType, req.Ticker)
+	s := "fca8a8c9-d7fe-4a69-b8dd-79ef94c52863"
+	id, err := uuid.Parse(s)
+	if err != nil {
+		log.Fatal("Invalid UUID:", err)
+	}
+
+	order := order.NewOrder(req.Price, req.Amount, db.OrderSideType(req.Side), db.OrderType(req.OrderType), req.Ticker, id)
 	if order.IsValid() {
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(order)
+		status := h.OrderBooks[req.Ticker].Submit(order)
+		fmt.Print("NEW ORDER SUBMITTED", order.ID, "\n")
+		if status {
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(order)
+		} else {
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Code:    "ORDERBOOK_SUBMISSION_FAILED",
+				Message: "Failed to submit order to orderbook",
+			})
+		}
+
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorResponse{
-			Error:   "Invalid Order",
-			Message: "Failed to submit order",
+			Code:    "ORDER_NOT_VALID",
+			Message: "Order is not valid",
 		})
 	}
 }
@@ -58,7 +82,7 @@ func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ErrorResponse{
-			Error:   "Internal Server Error",
+			Code:    "ORDER_RETRIEVAL_FAILED",
 			Message: "Failed to retrieve orders",
 		})
 		fmt.Print(err)
@@ -67,4 +91,19 @@ func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(orders)
+}
+
+func StartOrderPersistenceWorker(queries *db.Queries) {
+	for event := range events.NewOrderChan {
+		fmt.Print((event.CreatedBy))
+
+		queries.CreateOrder(context.Background(), db.CreateOrderParams{
+			Price:     event.Price,
+			Amount:    event.Amount,
+			Side:      (db.OrderSideType(event.Side)),
+			OrderType: (db.OrderType(event.OrderType)),
+			Asset:     event.Ticker,
+			CreatedBy: event.CreatedBy,
+		})
+	}
 }

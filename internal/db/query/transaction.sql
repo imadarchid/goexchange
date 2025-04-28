@@ -1,6 +1,6 @@
 -- name: CreateTransaction :one
-INSERT INTO transactions (price, amount, buyer_order, seller_order, asset)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO transactions (price, amount, buyer_order, seller_order, asset, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id;
 
 -- name: GetTransactionById :one

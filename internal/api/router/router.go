@@ -28,5 +28,8 @@ func NewRouter(h *handler.Handler) http.Handler {
 	r.Post("/orders", h.SubmitOrder)
 	r.Get("/orders", h.GetOrders)
 
+	// Assets route
+	r.Get("/assets", h.GetAssets)
+
 	return r
 }

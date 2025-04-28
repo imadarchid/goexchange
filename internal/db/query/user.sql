@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (first_name, last_name, dob, balance)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (first_name, last_name, dob, email, balance)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
 -- name: DeleteUser :one

@@ -8,31 +8,35 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const CreateTransaction = `-- name: CreateTransaction :one
-INSERT INTO transactions (price, amount, buyer_order, seller_order, asset)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO transactions (price, amount, buyer_order, seller_order, asset, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
 type CreateTransactionParams struct {
-	Price       float64 `json:"price"`
-	Amount      int32   `json:"amount"`
-	BuyerOrder  int32   `json:"buyer_order"`
-	SellerOrder int32   `json:"seller_order"`
-	Asset       string  `json:"asset"`
+	Price       float64   `json:"price"`
+	Amount      int32     `json:"amount"`
+	BuyerOrder  uuid.UUID `json:"buyer_order"`
+	SellerOrder uuid.UUID `json:"seller_order"`
+	Asset       string    `json:"asset"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
-func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (int32, error) {
+func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, CreateTransaction,
 		arg.Price,
 		arg.Amount,
 		arg.BuyerOrder,
 		arg.SellerOrder,
 		arg.Asset,
+		arg.CreatedAt,
 	)
-	var id int32
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
 }
@@ -78,7 +82,7 @@ SELECT id, price, amount, buyer_order, seller_order, asset, created_at FROM tran
 WHERE id = $1
 `
 
-func (q *Queries) GetTransactionById(ctx context.Context, id int32) (Transaction, error) {
+func (q *Queries) GetTransactionById(ctx context.Context, id uuid.UUID) (Transaction, error) {
 	row := q.db.QueryRowContext(ctx, GetTransactionById, id)
 	var i Transaction
 	err := row.Scan(
@@ -101,25 +105,25 @@ ORDER BY orders.created_at DESC
 `
 
 type GetTransactionsByUserRow struct {
-	ID          int32           `json:"id"`
+	ID          uuid.UUID       `json:"id"`
 	Price       float64         `json:"price"`
 	Amount      int32           `json:"amount"`
-	BuyerOrder  int32           `json:"buyer_order"`
-	SellerOrder int32           `json:"seller_order"`
+	BuyerOrder  uuid.UUID       `json:"buyer_order"`
+	SellerOrder uuid.UUID       `json:"seller_order"`
 	Asset       string          `json:"asset"`
 	CreatedAt   time.Time       `json:"created_at"`
-	ID_2        int32           `json:"id_2"`
+	ID_2        uuid.UUID       `json:"id_2"`
 	Price_2     float64         `json:"price_2"`
 	Amount_2    int32           `json:"amount_2"`
 	Side        OrderSideType   `json:"side"`
 	OrderType   OrderType       `json:"order_type"`
 	Asset_2     string          `json:"asset_2"`
 	CreatedAt_2 time.Time       `json:"created_at_2"`
-	CreatedBy   int32           `json:"created_by"`
+	CreatedBy   uuid.UUID       `json:"created_by"`
 	OrderStatus OrderStatusType `json:"order_status"`
 }
 
-func (q *Queries) GetTransactionsByUser(ctx context.Context, createdBy int32) ([]GetTransactionsByUserRow, error) {
+func (q *Queries) GetTransactionsByUser(ctx context.Context, createdBy uuid.UUID) ([]GetTransactionsByUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, GetTransactionsByUser, createdBy)
 	if err != nil {
 		return nil, err
