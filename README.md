@@ -5,7 +5,7 @@ A fun implementation of an asset exchange using Go. I am mostly doing this to le
 - [x] Basic order queuing and matching logic (Max-min heap).
 - [x] Handle limit orders
 - [x] Handle partial fills.
-- [ ] Handle market orders.
+- [x] Handle market orders.
 - [ ] Handle multiple assets.
 - [ ] Create an API layer to handle orders from customers (net/http).
 - [ ] Simulate large order flow and experiment with concurrency (Channels + Goroutines).

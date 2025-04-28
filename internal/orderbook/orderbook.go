@@ -7,14 +7,16 @@ import (
 )
 
 type OrderBook struct {
-	Bids *OrderHeap // max-heap (isMax = true)
-	Asks *OrderHeap // min-heap (isMax = false)
+	Bids   *OrderHeap // max-heap (isMax = true)
+	Asks   *OrderHeap // min-heap (isMax = false)
+	Ticker string
 }
 
-func NewOrderBook() *OrderBook {
+func NewOrderBook(ticker string) *OrderBook {
 	return &OrderBook{
-		Bids: NewOrderHeap(true),
-		Asks: NewOrderHeap(false),
+		Bids:   NewOrderHeap(true),
+		Asks:   NewOrderHeap(false),
+		Ticker: ticker,
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewOrderBook(t *testing.T) {
-	ob := NewOrderBook()
+	ob := NewOrderBook("LINK")
 
 	if ob.Bids == nil {
 		t.Error("Bids heap should not be nil")
@@ -25,9 +25,9 @@ func TestNewOrderBook(t *testing.T) {
 }
 
 func TestSubmitWrongOrder(t *testing.T) {
-	ob := NewOrderBook()
+	ob := NewOrderBook("LINK")
 
-	new_bad_order := order.NewOrder(-10, 100, types.Sell, types.Limit)
+	new_bad_order := order.NewOrder(-10, 100, types.Sell, types.Limit, "LINK")
 	ob.Submit(new_bad_order)
 
 	if ob.Asks.Len() > 0 {
@@ -36,8 +36,8 @@ func TestSubmitWrongOrder(t *testing.T) {
 }
 
 func TestSubmitLimitSellOrder(t *testing.T) {
-	ob := NewOrderBook()
-	test_order := order.NewOrder(10, 100, types.Sell, types.Limit)
+	ob := NewOrderBook("LINK")
+	test_order := order.NewOrder(10, 100, types.Sell, types.Limit, "LINK")
 
 	ob.Submit(test_order)
 	if ob.Bids.Len() > 0 {
@@ -50,8 +50,8 @@ func TestSubmitLimitSellOrder(t *testing.T) {
 }
 
 func TestSubmitLimitBuyOrder(t *testing.T) {
-	ob := NewOrderBook()
-	test_order := order.NewOrder(10, 100, types.Buy, types.Limit)
+	ob := NewOrderBook("LINK")
+	test_order := order.NewOrder(10, 100, types.Buy, types.Limit, "LINK")
 
 	ob.Submit(test_order)
 	if ob.Asks.Len() > 0 {
@@ -64,9 +64,9 @@ func TestSubmitLimitBuyOrder(t *testing.T) {
 }
 
 func TestSubmitMarketBuyOrder(t *testing.T) {
-	ob := NewOrderBook()
-	test_order := order.NewOrder(10, 100, types.Buy, types.Limit)
-	test_order_sell := order.NewOrder(10, 100, types.Sell, types.Market)
+	ob := NewOrderBook("LINK")
+	test_order := order.NewOrder(10, 100, types.Buy, types.Limit, "LINK")
+	test_order_sell := order.NewOrder(10, 100, types.Sell, types.Market, "LINK")
 
 	ob.Submit(test_order)
 	ob.Submit(test_order_sell)
@@ -85,8 +85,8 @@ func TestSubmitMarketBuyOrder(t *testing.T) {
 }
 
 func TestSubmitMarketSellOrder(t *testing.T) {
-	ob := NewOrderBook()
-	test_order_sell := order.NewOrder(10, 100, types.Sell, types.Limit)
+	ob := NewOrderBook("LINK")
+	test_order_sell := order.NewOrder(10, 100, types.Sell, types.Limit, "LINK")
 
 	ob.Submit(test_order_sell)
 
@@ -100,8 +100,8 @@ func TestSubmitMarketSellOrder(t *testing.T) {
 }
 
 func TestMarketOrderNoLiquidity(t *testing.T) {
-	ob := NewOrderBook()
-	test_order := order.NewOrder(10, 100, types.Buy, types.Market)
+	ob := NewOrderBook("LINK")
+	test_order := order.NewOrder(10, 100, types.Buy, types.Market, "LINK")
 
 	result := ob.Submit(test_order)
 	if result == true {
@@ -110,10 +110,10 @@ func TestMarketOrderNoLiquidity(t *testing.T) {
 }
 
 func TestWithdrawOrder(t *testing.T) {
-	ob := NewOrderBook()
-	test_order := order.NewOrder(12, 100, types.Buy, types.Limit)
-	buy_order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Limit)
-	sell_order_to_withdraw := order.NewOrder(120, 100, types.Sell, types.Limit)
+	ob := NewOrderBook("LINK")
+	test_order := order.NewOrder(12, 100, types.Buy, types.Limit, "LINK")
+	buy_order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Limit, "LINK")
+	sell_order_to_withdraw := order.NewOrder(120, 100, types.Sell, types.Limit, "LINK")
 
 	ob.Submit(test_order)
 	ob.Submit(buy_order_to_withdraw)
@@ -136,8 +136,8 @@ func TestWithdrawOrder(t *testing.T) {
 }
 
 func TestWithdrawEmptyOrderBook(t *testing.T) {
-	ob := NewOrderBook()
-	order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Limit)
+	ob := NewOrderBook("LINK")
+	order_to_withdraw := order.NewOrder(60, 100, types.Buy, types.Limit, "LINK")
 
 	result := ob.Withdraw(order_to_withdraw)
 
@@ -148,8 +148,8 @@ func TestWithdrawEmptyOrderBook(t *testing.T) {
 }
 
 func TestWithdrawBadOrder(t *testing.T) {
-	ob := NewOrderBook()
-	order_to_withdraw := order.NewOrder(60, 100, "SIDEWAYS", types.Limit)
+	ob := NewOrderBook("LINK")
+	order_to_withdraw := order.NewOrder(60, 100, "SIDEWAYS", types.Limit, "LINK")
 
 	result := ob.Withdraw(order_to_withdraw)
 
@@ -160,11 +160,11 @@ func TestWithdrawBadOrder(t *testing.T) {
 }
 
 func TestOrdersMatched(t *testing.T) {
-	ob := NewOrderBook()
+	ob := NewOrderBook("LINK")
 
 	// Case 1: similar orders
-	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit)
-	order_2 := order.NewOrder(60, 100, types.Sell, types.Limit)
+	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit, "LINK")
+	order_2 := order.NewOrder(60, 100, types.Sell, types.Limit, "LINK")
 
 	ob.Submit(order_1)
 	ob.Submit(order_2)
@@ -176,12 +176,12 @@ func TestOrdersMatched(t *testing.T) {
 }
 
 func TestOrdersPartiallyMatched(t *testing.T) {
-	ob := NewOrderBook()
+	ob := NewOrderBook("LINK")
 
-	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit)
-	order_2 := order.NewOrder(60, 50, types.Sell, types.Limit)
-	order_3 := order.NewOrder(60, 165, types.Sell, types.Market)
-	order_4 := order.NewOrder(62, 150, types.Buy, types.Limit)
+	order_1 := order.NewOrder(60, 100, types.Buy, types.Limit, "LINK")
+	order_2 := order.NewOrder(60, 50, types.Sell, types.Limit, "LINK")
+	order_3 := order.NewOrder(60, 165, types.Sell, types.Market, "LINK")
+	order_4 := order.NewOrder(62, 150, types.Buy, types.Limit, "LINK")
 
 	ob.Submit(order_1)
 	ob.Submit(order_2)

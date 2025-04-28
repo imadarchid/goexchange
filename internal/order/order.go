@@ -15,10 +15,10 @@ type Order struct {
 	Time   time.Time
 	Type   types.OrderType
 	Status types.Status
+	Ticker string
 }
 
-// Order Actions
-func NewOrder(price float64, amount float64, side types.Side, orderType types.OrderType) *Order {
+func NewOrder(price float64, amount float64, side types.Side, orderType types.OrderType, asset string) *Order {
 	return &Order{
 		ID:     uuid.New().String(),
 		Price:  price,
@@ -27,6 +27,7 @@ func NewOrder(price float64, amount float64, side types.Side, orderType types.Or
 		Time:   time.Now().UTC(),
 		Type:   orderType,
 		Status: types.Pending,
+		Ticker: asset,
 	}
 }
 
