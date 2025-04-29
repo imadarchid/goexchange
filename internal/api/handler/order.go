@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
 	"exchange/internal/db"
-	"exchange/internal/events"
 	"exchange/internal/order"
 	"exchange/internal/orderbook"
 	"exchange/internal/types"
@@ -48,7 +46,7 @@ func (h *Handler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s := "fca8a8c9-d7fe-4a69-b8dd-79ef94c52863"
+	s := "f13a1f37-c302-411a-80f4-0c903d73e948"
 	id, err := uuid.Parse(s)
 	if err != nil {
 		log.Fatal("Invalid UUID:", err)
@@ -56,8 +54,7 @@ func (h *Handler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 
 	order := order.NewOrder(req.Price, req.Amount, db.OrderSideType(req.Side), db.OrderType(req.OrderType), req.Ticker, id)
 	if order.IsValid() {
-		status := h.OrderBooks[req.Ticker].Submit(order)
-		fmt.Print("NEW ORDER SUBMITTED", order.ID, "\n")
+		status := h.OrderBooks[req.Ticker].Submit(order, h.Queries)
 		if status {
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(order)
@@ -91,19 +88,4 @@ func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(orders)
-}
-
-func StartOrderPersistenceWorker(queries *db.Queries) {
-	for event := range events.NewOrderChan {
-		fmt.Print((event.CreatedBy))
-
-		queries.CreateOrder(context.Background(), db.CreateOrderParams{
-			Price:     event.Price,
-			Amount:    event.Amount,
-			Side:      (db.OrderSideType(event.Side)),
-			OrderType: (db.OrderType(event.OrderType)),
-			Asset:     event.Ticker,
-			CreatedBy: event.CreatedBy,
-		})
-	}
 }

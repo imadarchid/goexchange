@@ -25,5 +25,5 @@ type TransactionEvent struct {
 	Timestamp   time.Time
 }
 
-var MatchEventChan = make(chan TransactionEvent, 10000)
-var NewOrderChan = make(chan OrderEvent, 10000)
+var TransactionEventChan = make(chan TransactionEvent, 10000)
+// var NewOrderChan = make(chan OrderEvent, 10000)

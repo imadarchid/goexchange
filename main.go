@@ -49,7 +49,6 @@ func main() {
 	r := router.NewRouter(h)
 
 	// TX processing workers
-	go handler.StartOrderPersistenceWorker(queries)
 	go handler.StartTransactionPersistenceWorker(queries)
 
 	http.ListenAndServe(":3000", r)

@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"context"
 	"exchange/internal/db"
 	"exchange/internal/events"
 	"exchange/internal/order"
@@ -23,7 +24,7 @@ func NewOrderBook(ticker string) *OrderBook {
 }
 
 // Submit implements the OrderBookInterface
-func (ob *OrderBook) Submit(o *order.Order) bool {
+func (ob *OrderBook) Submit(o *order.Order, queries *db.Queries) bool {
 	if !o.IsValid() {
 		fmt.Println("Order not valid. WRONG_ORDER")
 		return false
@@ -46,20 +47,19 @@ func (ob *OrderBook) Submit(o *order.Order) bool {
 		return false
 	}
 
-	fmt.Print("NEW ORDER EVENT", o.ID, "\n")
-
-	event := events.OrderEvent{
+	o_id, _ := queries.CreateOrder(context.Background(), db.CreateOrderParams{
 		Price:     o.Price,
 		Amount:    o.Amount,
-		OrderType: o.Type,
 		Side:      o.Side,
-		Ticker:    o.Ticker,
+		OrderType: o.Type,
+		Asset:     o.Ticker,
 		CreatedBy: o.CreatedBy,
-	}
-	events.NewOrderChan <- event
+	})
 
-	fmt.Printf("%s %s Order submitted %d @ %.2f ID: %s\n",
-		o.Side, o.Type, o.Amount, o.Price, o.ID)
+	o.ID = o_id
+
+	fmt.Printf("%s %s %s Order submitted %d @ %.2f ID: %s\n",
+		o.Side, o.Ticker, o.Type, o.Amount, o.Price, o_id.String())
 
 	ob.MatchOrders()
 	return true
@@ -115,6 +115,8 @@ func (ob *OrderBook) MatchOrders() {
 				ask.Status = db.OrderStatusTypeFILLED
 			}
 
+			fmt.Print(bid.Ticker)
+
 			event := events.TransactionEvent{
 				Price:       ask.Price,
 				Amount:      tradeAmount,
@@ -123,7 +125,7 @@ func (ob *OrderBook) MatchOrders() {
 				Asset:       bid.Ticker,
 				Timestamp:   time.Now(),
 			}
-			events.MatchEventChan <- event
+			events.TransactionEventChan <- event
 
 			// Log the trade
 			fmt.Printf("Matched %d @ %.2f (Buy ID: %s, Sell ID: %s)\n",

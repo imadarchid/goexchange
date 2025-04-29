@@ -8,14 +8,18 @@ import (
 )
 
 func StartTransactionPersistenceWorker(queries *db.Queries) {
-	for event := range events.MatchEventChan {
-		fmt.Print(event.BuyerOrder)
+	for event := range events.TransactionEventChan {
+		fmt.Print("Buyer: ", event.BuyerOrder, "\n")
+		fmt.Print("Seller: ", event.SellerOrder, "\n")
+
 		queries.CreateTransaction(context.Background(), db.CreateTransactionParams{
 			BuyerOrder:  event.BuyerOrder,
 			SellerOrder: event.SellerOrder,
 			Price:       event.Price,
 			Amount:      event.Amount,
+			Asset:       event.Asset,
 			CreatedAt:   event.Timestamp,
 		})
+
 	}
 }
