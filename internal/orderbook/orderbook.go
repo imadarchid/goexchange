@@ -1,9 +1,12 @@
 package orderbook
 
 import (
+	"context"
+	"exchange/internal/db"
+	"exchange/internal/events"
 	"exchange/internal/order"
-	"exchange/internal/types"
 	"fmt"
+	"time"
 )
 
 type OrderBook struct {
@@ -20,9 +23,15 @@ func NewOrderBook(ticker string) *OrderBook {
 	}
 }
 
-func (ob *OrderBook) Submit(o *order.Order) bool {
+// Submit implements the OrderBookInterface
+func (ob *OrderBook) Submit(o *order.Order, queries *db.Queries) bool {
 	if !o.IsValid() {
 		fmt.Println("Order not valid. WRONG_ORDER")
+		return false
+	}
+
+	if ob == nil {
+		fmt.Println("Ticker does not exist. BAD_TICKER")
 		return false
 	}
 
@@ -32,27 +41,39 @@ func (ob *OrderBook) Submit(o *order.Order) bool {
 	}
 
 	if !handleOrderType(o, ob) {
-		fmt.Printf("%s Order was NOT filled %.2f @ %.2f ID: %s\n",
+		fmt.Printf("%s Order was NOT filled %d @ %.2f ID: %s\n",
 			o.Side, o.Amount, o.Price, o.ID)
-		o.Status = types.Cancelled
+		o.Status = db.OrderStatusTypeCANCELED
 		return false
 	}
 
-	fmt.Printf("%s %s Order submitted %.2f @ %.2f ID: %s\n",
-		o.Side, o.Type, o.Amount, o.Price, o.ID)
+	o_id, _ := queries.CreateOrder(context.Background(), db.CreateOrderParams{
+		Price:     o.Price,
+		Amount:    o.Amount,
+		Side:      o.Side,
+		OrderType: o.Type,
+		Asset:     o.Ticker,
+		CreatedBy: o.CreatedBy,
+	})
+
+	o.ID = o_id
+
+	fmt.Printf("%s %s %s Order submitted %d @ %.2f ID: %s\n",
+		o.Side, o.Ticker, o.Type, o.Amount, o.Price, o_id.String())
 
 	ob.MatchOrders()
 	return true
 }
 
+// Withdraw implements the OrderBookInterface
 func (ob *OrderBook) Withdraw(o *order.Order) bool {
-	if o.Side == types.Buy {
+	if o.Side == db.OrderSideTypeBUY {
 		if ob.Bids.Len() > 0 {
 			return ob.removeFromHeap(ob.Bids, o.ID)
 		} else {
 			return false
 		}
-	} else if o.Side == types.Sell {
+	} else if o.Side == db.OrderSideTypeSELL {
 		if ob.Asks.Len() > 0 {
 			return ob.removeFromHeap(ob.Asks, o.ID)
 		} else {
@@ -67,73 +88,82 @@ func (ob *OrderBook) MatchOrders() {
 		bid := ob.Bids.Peek()
 		ask := ob.Asks.Peek()
 
-		if bid.Type == types.Market {
+		if bid.Type == db.OrderTypeMARKET {
 			bid.Price = ask.Price
-		} else if ask.Type == types.Market {
+		} else if ask.Type == db.OrderTypeMARKET {
 			ask.Price = bid.Price
 		}
 
 		if bid.Price >= ask.Price {
-			tradeAmount := min(bid.Amount, ask.Amount)
-
-			// Log the trade
-			fmt.Printf("Matched %.2f @ %.2f (Buy ID: %s, Sell ID: %s)\n",
-				tradeAmount, ask.Price, bid.ID, ask.ID)
+			tradeAmount := bid.Amount
+			if ask.Amount < bid.Amount {
+				tradeAmount = ask.Amount
+			}
 
 			bid.Amount -= tradeAmount
 			ask.Amount -= tradeAmount
 
-			bid.Status = types.PartiallyFilled
-			ask.Status = types.PartiallyFilled
+			bid.Status = db.OrderStatusTypePARTIALLYFILLED
+			ask.Status = db.OrderStatusTypePARTIALLYFILLED
 
 			if bid.Amount == 0 {
 				ob.Bids.Delete()
-				bid.Status = types.Filled
+				bid.Status = db.OrderStatusTypeFILLED
 			}
 			if ask.Amount == 0 {
 				ob.Asks.Delete()
-				ask.Status = types.Filled
+				ask.Status = db.OrderStatusTypeFILLED
 			}
+
+			fmt.Print(bid.Ticker)
+
+			event := events.TransactionEvent{
+				Price:       ask.Price,
+				Amount:      tradeAmount,
+				BuyerOrder:  bid,
+				SellerOrder: ask,
+				Asset:       bid.Ticker,
+				Timestamp:   time.Now(),
+			}
+			events.TransactionEventChan <- event
+
+			// Log the trade
+			fmt.Printf("Matched %d @ %.2f (Buy ID: %s, Sell ID: %s)\n",
+				tradeAmount, ask.Price, bid.ID, ask.ID)
+
 		} else {
 			break
 		}
 	}
 }
 
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func handleOrderType(o *order.Order, ob *OrderBook) bool {
 	switch o.Side {
-	case types.Buy:
+	case db.OrderSideTypeBUY:
 		switch o.Type {
-		case types.Market:
+		case db.OrderTypeMARKET:
 			if ob.Asks.Len() > 0 {
 				o.Price = ob.Asks.Peek().Price
 				ob.Bids.Insert(o)
 				return true
 			}
 			return false
-		case types.Limit:
+		case db.OrderTypeLIMIT:
 			ob.Bids.Insert(o)
 			return true
 		default:
 			return false
 		}
-	case types.Sell:
+	case db.OrderSideTypeSELL:
 		switch o.Type {
-		case types.Market:
+		case db.OrderTypeMARKET:
 			if ob.Bids.Len() > 0 {
 				o.Price = ob.Bids.Peek().Price
 				ob.Asks.Insert(o)
 				return true
 			}
 			return false
-		case types.Limit:
+		case db.OrderTypeLIMIT:
 			ob.Asks.Insert(o)
 			return true
 		default:

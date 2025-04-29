@@ -2,6 +2,8 @@ package orderbook
 
 import (
 	"exchange/internal/order"
+
+	"github.com/google/uuid"
 )
 
 type OrderHeap struct {
@@ -90,7 +92,7 @@ func (h *OrderHeap) compareOrders(i, j int) int {
 	return 0
 }
 
-func (ob *OrderBook) removeFromHeap(h *OrderHeap, id string) bool {
+func (ob *OrderBook) removeFromHeap(h *OrderHeap, id uuid.UUID) bool {
 	for i, val := range h.orders {
 		if val.ID == id {
 			lastIndex := len(h.orders) - 1
