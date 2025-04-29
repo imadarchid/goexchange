@@ -7,8 +7,8 @@ A fun implementation of an asset exchange using Go. I am mostly doing this to le
 - [x] Handle partial fills.
 - [x] Handle market orders.
 - [x] Handle multiple assets.
-- [ ] Create an API layer to handle orders from customers (net/http).
+- [x] Create an API layer to handle orders from customers (net/http).
 - [ ] Simulate large order flow and experiment with concurrency (Channels + Goroutines).
 - [ ] Expose orderbook using websockets.
 - [ ] Simple UI to showcase project.
-- [x] Maintain 80%+ code coverage.
+- [ ] Maintain 80%+ code coverage.

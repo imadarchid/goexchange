@@ -21,3 +21,8 @@ UPDATE orders
 SET order_status = $1
 WHERE id = $2
 RETURNING id;
+
+-- name: GetSubmittedOrders :many
+SELECT * FROM orders
+WHERE order_status = 'SUBMITTED'
+ORDER BY created_at DESC;

@@ -30,7 +30,7 @@ CREATE TABLE orders (
     asset VARCHAR(5) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by UUID NOT NULL,
-    order_status order_status_type NOT NULL DEFAULT 'PENDING',
+    order_status order_status_type NOT NULL DEFAULT 'SUBMITTED',
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (asset) REFERENCES assets(ticker)
 );

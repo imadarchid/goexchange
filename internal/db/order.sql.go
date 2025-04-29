@@ -139,6 +139,45 @@ func (q *Queries) GetOrdersByUser(ctx context.Context, createdBy uuid.UUID) ([]O
 	return items, nil
 }
 
+const GetSubmittedOrders = `-- name: GetSubmittedOrders :many
+SELECT id, price, amount, side, order_type, asset, created_at, created_by, order_status FROM orders
+WHERE order_status = 'SUBMITTED'
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetSubmittedOrders(ctx context.Context) ([]Order, error) {
+	rows, err := q.db.QueryContext(ctx, GetSubmittedOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Order{}
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.Price,
+			&i.Amount,
+			&i.Side,
+			&i.OrderType,
+			&i.Asset,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.OrderStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const UpdateOrderStatus = `-- name: UpdateOrderStatus :one
 UPDATE orders
 SET order_status = $1

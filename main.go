@@ -11,6 +11,7 @@ import (
 	"exchange/internal/api/handler"
 	"exchange/internal/api/router"
 	"exchange/internal/db"
+	"exchange/internal/order"
 	"exchange/internal/orderbook"
 )
 
@@ -47,6 +48,22 @@ func main() {
 	// Set up API handler and router
 	h := &handler.Handler{Queries: queries, OrderBooks: orderbooks, ValidTickers: validTickers}
 	r := router.NewRouter(h)
+
+	// Get all submitted orders not filled and add them to the orderbook
+	orders, err := queries.GetSubmittedOrders(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	for _, o := range orders {
+		persisted_order := order.NewOrder(o.Price, o.Amount, o.Side, o.OrderType, o.Asset, o.CreatedBy)
+		persisted_order.ID = o.ID
+		if o.Side == "BUY" {
+			h.OrderBooks[o.Asset].Bids.Insert(persisted_order)
+		} else {
+			h.OrderBooks[o.Asset].Asks.Insert(persisted_order)
+		}
+	}
 
 	// TX processing workers
 	go handler.StartTransactionPersistenceWorker(queries)

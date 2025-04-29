@@ -120,8 +120,8 @@ func (ob *OrderBook) MatchOrders() {
 			event := events.TransactionEvent{
 				Price:       ask.Price,
 				Amount:      tradeAmount,
-				BuyerOrder:  bid.ID,
-				SellerOrder: ask.ID,
+				BuyerOrder:  bid,
+				SellerOrder: ask,
 				Asset:       bid.Ticker,
 				Timestamp:   time.Now(),
 			}

@@ -46,7 +46,7 @@ func (h *Handler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s := "f13a1f37-c302-411a-80f4-0c903d73e948"
+	s := "6d28e047-27c2-457a-9c4f-d68af05d6c8e"
 	id, err := uuid.Parse(s)
 	if err != nil {
 		log.Fatal("Invalid UUID:", err)
@@ -59,6 +59,7 @@ func (h *Handler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(order)
 		} else {
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Code:    "ORDERBOOK_SUBMISSION_FAILED",
 				Message: "Failed to submit order to orderbook",
