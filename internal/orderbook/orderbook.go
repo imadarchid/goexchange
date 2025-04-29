@@ -7,7 +7,15 @@ import (
 	"exchange/internal/order"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+// OrderCreator defines the interface required for creating an order persistence mechanism.
+// This allows mocking the database interaction during tests.
+type OrderCreator interface {
+	CreateOrder(ctx context.Context, arg db.CreateOrderParams) (uuid.UUID, error)
+}
 
 type OrderBook struct {
 	Bids   *OrderHeap // max-heap (isMax = true)
@@ -24,7 +32,7 @@ func NewOrderBook(ticker string) *OrderBook {
 }
 
 // Submit implements the OrderBookInterface
-func (ob *OrderBook) Submit(o *order.Order, queries *db.Queries) bool {
+func (ob *OrderBook) Submit(o *order.Order, creator OrderCreator) bool {
 	if !o.IsValid() {
 		fmt.Println("Order not valid. WRONG_ORDER")
 		return false
@@ -47,7 +55,8 @@ func (ob *OrderBook) Submit(o *order.Order, queries *db.Queries) bool {
 		return false
 	}
 
-	o_id, _ := queries.CreateOrder(context.Background(), db.CreateOrderParams{
+	// Use the creator interface to persist the order
+	o_id, err := creator.CreateOrder(context.Background(), db.CreateOrderParams{
 		Price:     o.Price,
 		Amount:    o.Amount,
 		Side:      o.Side,
@@ -55,6 +64,14 @@ func (ob *OrderBook) Submit(o *order.Order, queries *db.Queries) bool {
 		Asset:     o.Ticker,
 		CreatedBy: o.CreatedBy,
 	})
+
+	// Handle potential error from CreateOrder
+	if err != nil {
+		fmt.Printf("Failed to create order in DB: %v\n", err)
+		// Decide how to handle DB error - perhaps mark order as failed?
+		// For now, we'll return false as the submission wasn't fully successful.
+		return false
+	}
 
 	o.ID = o_id
 

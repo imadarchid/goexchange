@@ -1,12 +1,28 @@
 package orderbook
 
 import (
+	"context"
 	"exchange/internal/db"
 	"exchange/internal/order"
 	"testing"
 
 	"github.com/google/uuid"
 )
+
+// mockDBQueries is a mock implementation for db.Queries, focusing on CreateOrder.
+// It implements the orderbook.OrderCreator interface.
+type mockDBQueries struct {
+	// Store the last CreateOrderParams received for potential assertions
+	lastCreateParams *db.CreateOrderParams
+}
+
+// Override CreateOrder to mock database interaction.
+func (m *mockDBQueries) CreateOrder(ctx context.Context, arg db.CreateOrderParams) (uuid.UUID, error) {
+	// Store args for assertion
+	m.lastCreateParams = &arg
+	// Return a new UUID as if the DB generated it, and no error.
+	return uuid.New(), nil
+}
 
 func TestNewOrderBook(t *testing.T) {
 	ob := NewOrderBook("LINK")
@@ -26,22 +42,23 @@ func TestNewOrderBook(t *testing.T) {
 	}
 }
 
-// func TestSubmitWrongOrder(t *testing.T) {
-// 	ob := NewOrderBook("LINK")
+func TestSubmitWrongOrder(t *testing.T) {
+	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
+	new_bad_order := order.NewOrder(-10, 100, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
+	ob.Submit(new_bad_order, mockQueries)
 
-// 	new_bad_order := order.NewOrder(-10, 100, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
-// 	ob.Submit(new_bad_order, nil)
-
-// 	if ob.Asks.Len() > 0 {
-// 		t.Errorf("Expected order not to be submitted to the orderbook.")
-// 	}
-// }
+	if ob.Asks.Len() > 0 {
+		t.Errorf("Expected order not to be submitted to the orderbook.")
+	}
+}
 
 func TestSubmitLimitSellOrder(t *testing.T) {
 	ob := NewOrderBook("LINK")
-	test_order := order.NewOrder(60, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
+	mockQueries := &mockDBQueries{}
+	test_order := order.NewOrder(60, 100, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	ob.Submit(test_order, nil)
+	ob.Submit(test_order, mockQueries)
 	if ob.Bids.Len() > 0 {
 		t.Error("SELL order was transmitted as a BUY order.")
 	}
@@ -53,9 +70,10 @@ func TestSubmitLimitSellOrder(t *testing.T) {
 
 func TestSubmitLimitBuyOrder(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 	test_order := order.NewOrder(60, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	ob.Submit(test_order, nil)
+	ob.Submit(test_order, mockQueries)
 	if ob.Asks.Len() > 0 {
 		t.Error("BUY order was transmitted as a SELL order.")
 	}
@@ -67,11 +85,12 @@ func TestSubmitLimitBuyOrder(t *testing.T) {
 
 func TestSubmitMarketBuyOrder(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 	test_order := order.NewOrder(10, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 	test_order_sell := order.NewOrder(10, 100, db.OrderSideTypeSELL, db.OrderTypeMARKET, "LINK", uuid.New())
 
-	ob.Submit(test_order, nil)
-	ob.Submit(test_order_sell, nil)
+	ob.Submit(test_order, mockQueries)
+	ob.Submit(test_order_sell, mockQueries)
 
 	if ob.Asks.Len() > 0 {
 		t.Error("BUY order was transmitted as a SELL order.")
@@ -88,9 +107,10 @@ func TestSubmitMarketBuyOrder(t *testing.T) {
 
 func TestSubmitMarketSellOrder(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 	test_order_sell := order.NewOrder(10, 100, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	ob.Submit(test_order_sell, nil)
+	ob.Submit(test_order_sell, mockQueries)
 
 	if ob.Bids.Len() > 0 {
 		t.Error("BUY order was transmitted as a SELL order.")
@@ -103,9 +123,10 @@ func TestSubmitMarketSellOrder(t *testing.T) {
 
 func TestMarketOrderNoLiquidity(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 	test_order := order.NewOrder(10, 100, db.OrderSideTypeBUY, db.OrderTypeMARKET, "LINK", uuid.New())
 
-	result := ob.Submit(test_order, nil)
+	result := ob.Submit(test_order, mockQueries)
 	if result == true {
 		t.Error("Market order was processed despite insufficient liquidity.")
 	}
@@ -113,13 +134,14 @@ func TestMarketOrderNoLiquidity(t *testing.T) {
 
 func TestWithdrawOrder(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 	test_order := order.NewOrder(12, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 	buy_order_to_withdraw := order.NewOrder(60, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 	sell_order_to_withdraw := order.NewOrder(120, 100, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	ob.Submit(test_order, nil)
-	ob.Submit(buy_order_to_withdraw, nil)
-	ob.Submit(sell_order_to_withdraw, nil)
+	ob.Submit(test_order, mockQueries)
+	ob.Submit(buy_order_to_withdraw, mockQueries)
+	ob.Submit(sell_order_to_withdraw, mockQueries)
 
 	if ob.Bids.Len()+ob.Asks.Len() != 3 {
 		t.Error("Not all orders were submitted.")
@@ -163,13 +185,14 @@ func TestWithdrawBadOrder(t *testing.T) {
 
 func TestOrdersMatched(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 
 	// Case 1: similar orders
 	order_1 := order.NewOrder(60, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 	order_2 := order.NewOrder(60, 100, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	ob.Submit(order_1, nil)
-	ob.Submit(order_2, nil)
+	ob.Submit(order_1, mockQueries)
+	ob.Submit(order_2, mockQueries)
 
 	if ob.Asks.Len()-ob.Bids.Len() != 0 {
 		t.Errorf("Expected an empty order book.")
@@ -179,26 +202,27 @@ func TestOrdersMatched(t *testing.T) {
 
 func TestOrdersPartiallyMatched(t *testing.T) {
 	ob := NewOrderBook("LINK")
+	mockQueries := &mockDBQueries{}
 
 	order_1 := order.NewOrder(60, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 	order_2 := order.NewOrder(60, 50, db.OrderSideTypeSELL, db.OrderTypeLIMIT, "LINK", uuid.New())
 	order_3 := order.NewOrder(60, 165, db.OrderSideTypeSELL, db.OrderTypeMARKET, "LINK", uuid.New())
 	order_4 := order.NewOrder(62, 150, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	ob.Submit(order_1, nil)
-	ob.Submit(order_2, nil)
+	ob.Submit(order_1, mockQueries)
+	ob.Submit(order_2, mockQueries)
 
 	if order_1.Status != db.OrderStatusTypePARTIALLYFILLED {
 		t.Errorf("Expected status to be partially filled.")
 	}
 
-	ob.Submit(order_3, nil)
+	ob.Submit(order_3, mockQueries)
 
 	if order_3.Status != db.OrderStatusTypePARTIALLYFILLED {
 		t.Errorf("Expected status to be partially filled.")
 	}
 
-	ob.Submit(order_4, nil)
+	ob.Submit(order_4, mockQueries)
 
 	if order_3.Status != db.OrderStatusTypeFILLED {
 		t.Errorf("Expected status to be fully filled.")
@@ -224,9 +248,10 @@ func TestOrdersPartiallyMatched(t *testing.T) {
 
 func TestWrongOrderBook(t *testing.T) {
 	ob := NewOrderBook("XRP")
+	mockQueries := &mockDBQueries{}
 	order_1 := order.NewOrder(60, 100, db.OrderSideTypeBUY, db.OrderTypeLIMIT, "LINK", uuid.New())
 
-	result := ob.Submit(order_1, nil)
+	result := ob.Submit(order_1, mockQueries)
 	if result {
 		t.Errorf("Order was submitted to the wrong orderbook.")
 	}
