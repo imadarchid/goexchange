@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -64,6 +65,8 @@ func main() {
 			h.OrderBooks[o.Asset].Asks.Insert(persisted_order)
 		}
 	}
+
+	fmt.Printf("Loaded %d orders in memory \n", len(orders))
 
 	// TX processing workers
 	go handler.StartTransactionPersistenceWorker(queries)

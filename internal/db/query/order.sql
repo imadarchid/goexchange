@@ -24,5 +24,5 @@ RETURNING id;
 
 -- name: GetSubmittedOrders :many
 SELECT * FROM orders
-WHERE order_status = 'SUBMITTED'
+WHERE order_status = 'SUBMITTED' OR order_status = 'PARTIALLY_FILLED'
 ORDER BY created_at DESC;

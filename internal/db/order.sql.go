@@ -141,7 +141,7 @@ func (q *Queries) GetOrdersByUser(ctx context.Context, createdBy uuid.UUID) ([]O
 
 const GetSubmittedOrders = `-- name: GetSubmittedOrders :many
 SELECT id, price, amount, side, order_type, asset, created_at, created_by, order_status FROM orders
-WHERE order_status = 'SUBMITTED'
+WHERE order_status = 'SUBMITTED' OR order_status = 'PARTIALLY_FILLED'
 ORDER BY created_at DESC
 `
 
